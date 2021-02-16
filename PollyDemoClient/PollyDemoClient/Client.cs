@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Net.Http;
 using System.Threading;
@@ -26,23 +26,25 @@ namespace PollyDemoClient
             _cachePolicy = policyRegistry.Get<IAsyncPolicy<HttpResponseMessage>>("CachePolicy");      
         }
 
-        public async Task Demo1Retry()
+        public async Task Retry()
         {
-            await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "demo/retry"));
+            var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "demo/retry"));
+            LogResponse(await response.Content.ReadAsStringAsync());
         }
 
-        public async Task Demo2CircuitBreaker()
+        public async Task CircuitBreaker()
         {
-            Task[] tasks = new Task[15];
+            Task[] tasks = new Task[6];
             
-            for (int i = 0; i < 15; i++)
+            for (int i = 0; i < 6; i++)
             {
-                var result = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "demo/circuit-breaker"));
-                Thread.Sleep(1000 + i*100);
+                var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "demo/circuit-breaker"));
+                LogResponse(await response.Content.ReadAsStringAsync());
+                Thread.Sleep(1000 + i*500);
             }
         }
 
-        public async Task AlwaysFail()
+        public async Task Fallback()
         {
             await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "demo/always-fail"));
         }
@@ -57,22 +59,30 @@ namespace PollyDemoClient
             Context context = new Context($"cache-key");
             for (int i = 0; i < 10; i++)
             {
-                var result = await _cachePolicy.ExecuteAsync(
+                var response = await _cachePolicy.ExecuteAsync(
                     (_) => _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "demo/cache")),
                     context);
-                Console.WriteLine(await result.Content.ReadAsStringAsync());
+                LogResponse(await response.Content.ReadAsStringAsync());
                 Thread.Sleep(300);
             }
         }
 
         public async Task Bulkhead()
         {
-            Task[] tasks = new Task[35];
+            Task[] tasks = new Task[12];
             for (int i = 0; i < tasks.Length; i++)
             {
-                tasks[i] = _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "demo/bulkhead"));
+                tasks[i] = Task.Run(async () => {
+                    var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "demo/bulkhead"));
+                    LogResponse(await response.Content.ReadAsStringAsync());
+                });
             }
             await Task.WhenAll(tasks);
+        }
+
+        private static void LogResponse(string message)
+        {
+            Console.WriteLine(DateTime.Now.ToString("HH:mm:ss") + " [Response] " + message);
         }
     }
 }
