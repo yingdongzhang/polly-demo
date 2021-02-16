@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
@@ -37,7 +37,7 @@ namespace PollyDemoServer.Controllers
 
             _logger.LogInformation("Success");
             _memoryCache.Set<int>(requestCountKey, 0);
-            return Ok(new List<string>{ "Hello", "World" });
+            return Ok("OK");
         }
 
         [HttpGet("circuit-breaker")]
@@ -48,7 +48,7 @@ namespace PollyDemoServer.Controllers
 
             _logger.LogInformation($"Processing request #{requestCount}");
 
-            if (requestCount < 6)
+            if (requestCount < 4)
             {
                 _logger.LogInformation("Receiving too many requests...");
                 _memoryCache.Set<int>(requestCountKey, requestCount + 1);
@@ -98,7 +98,7 @@ namespace PollyDemoServer.Controllers
             var requestCount = _memoryCache.Get<int>(requestCountKey);
             _logger.LogInformation($"Processing request #{requestCount}");
             _memoryCache.Set<int>(requestCountKey, requestCount + 1);
-            Thread.Sleep(2500);
+            Thread.Sleep(500);
             return Ok("OK");
         }
     }
